@@ -121,7 +121,7 @@ typename WSSkiplist<T>::Node* WSSkiplist<T>::newNode() {
 	Node *u = (Node *) malloc(sizeof(Node) + (k + 1) * sizeof(Node*));
 	u->qnext = u->qprev = NULL;
 	u->w = INT_MAX;
-	memset(u->next, (k + 1) * sizeof(Node*), '\0');
+	memset(u->next, '\0', (k + 1) * sizeof(Node*));
 	return u;
 }
 
