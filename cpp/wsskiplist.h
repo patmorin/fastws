@@ -50,6 +50,15 @@ protected:
 	void init(T *data, int n);
 	void rebuild(int k);
 
+	void sanity() {
+		for (int i = 0; i <= k; i++) {
+			Node *u = sentinel;
+			for (int j = 0; j < n[i]; j++)
+				u = u->next[i];
+			assert(u->next[i] == NULL);
+		}
+	}
+
 	Node *newNode();
 	void deleteNode(Node *u);
 
@@ -88,7 +97,8 @@ void WSSkiplist<T>::init(T *data, int n0) {
 			 << ", b[" << i << "]=" << b[i] << endl;
     }
 
-	n = new int[k+1];
+	n = new int[k+1]();
+
 	n[k] = n0;
 	sentinel = newNode();
 	sentinel->x = -1; // FIXME: non-negative integer only
@@ -122,8 +132,8 @@ void WSSkiplist<T>::deleteNode(Node *u) {
 
 template<class T>
 void WSSkiplist<T>::rebuild(int k) {
+
 	// compute working-set numbers of relevant nodes
-	cout << "Rebuilding L_" << k << endl;
 	Node *u = sentinel->qnext;
 	int wmax = a[k-1];
 	for (int i = 0; i <= wmax; i++) {
@@ -132,11 +142,20 @@ void WSSkiplist<T>::rebuild(int k) {
 	}
 
 	for (int i = k - 1; i >= 0; i--) {
+		// empty L_i
+		Node *u = sentinel;
+		for (int j = 0; j < n[i]; j++) {
+			Node *prev = u;
+			u = u->next[i];
+			prev->next[i] = NULL;
+		}
+		assert(u->next[i] == NULL);
 		n[i] = 0;
-		Node *u = sentinel->next[i + 1];
+
+		// repopulate L_i using L_{i+1}
+		u = sentinel->next[i + 1];
 		Node *prev = sentinel;
 		int w = a[i];
-		// cout << "i = " << i << ", w = " << w << endl;
 		bool skipped = false;
 		while (u != NULL) {
 			if (skipped || u->w <= w) {
@@ -162,23 +181,19 @@ void WSSkiplist<T>::rebuild(int k) {
 
 template<class T>
 T WSSkiplist<T>::find(T x) {
-	// cout << "Searching for " << x << ":";
-	Node *stack[50]; // FIXME: fixed upper bound
+	Node *blech[50]; // FIXME: fixed upper bound
 	Node *u = sentinel;
 	int c = -1, i = 0;
 	while (u->next[i] != NULL && (c = cmp(u->next[i]->x, x)) < 0)
 		u = u->next[i];
-	stack[i] = u;
-	// cout << u->x << ",";
+	blech[i] = u;
 	if (c != 0) {
 		for (i = 1; i <= k; i++) {
 			if (u->next[i] != NULL && (c = cmp(u->next[i]->x, x)) < 0)
 				u = u->next[i];
-			stack[i] = u;
+			blech[i] = u;
 			if (c == 0)	break;
-			// cout << u->x << ",";
 		}
-		// cout << endl;
 	}
 
 	// Search is done: we're going to return w->x
@@ -190,12 +205,14 @@ T WSSkiplist<T>::find(T x) {
 	// Add w to lists L_0,...,L_{i-1}
 	while (i > 0) {
 		i--;
-		n[i]++;
-		w->next[i] = stack[i]->next[i];
-		stack[i]->next[i] = w;
+		if (blech[i]->next[i] != w) {
+			n[i]++;
+			w->next[i] = blech[i]->next[i];
+			blech[i]->next[i] = w;
+		}
 	}
 
-	// move w to the front of the front of the working-set queue
+	// move w to the front of the working-set queue
 	w->qnext->qprev = w->qprev;
 	w->qprev->qnext = w->qnext;
 	w->qprev = sentinel;
@@ -205,12 +222,9 @@ T WSSkiplist<T>::find(T x) {
 
 	// check for rebuild
 	if (n[0] > n0max) {
-		// cout << "Rebuild triggered: n[0] = " << n[0] << endl;
 		for (i = 0; n[i] > b[i]; i++);
-		// cout << "Rebuilding at L_" << i << endl;
 		rebuild(i);
 	}
-
 
 	return w->x;
 }
@@ -232,10 +246,11 @@ void WSSkiplist<T>::printOn(std::ostream &out) {
 	for (int i = 0; i <= k; i++) {
 		cout << "L(" << i << "): ";
 		Node *u = sentinel->next[i];
-		while (u != NULL) {
+		for (int j = 0; j < n[i]; j++) {
 			cout << u->x << ",";
 			u = u->next[i];
 		}
+		assert(u == NULL);
 		cout << " n(" << i << ") = " << n[i] << endl;
 	}
 	cout << "q = ";

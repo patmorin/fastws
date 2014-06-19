@@ -12,6 +12,7 @@ void big_test(int n) {
 	{
 		cout << "Creating WSSkiplist" << endl;
 		fastws::WSSkiplist<int> sl(data, n);
+		delete[] data;
 		sl.find(16);
 		sl.find(22);
 		cout << "Doing lots of searches" << endl;
@@ -34,7 +35,7 @@ int main(int argc, char **argv) {
 	{
 		cout << "Creating WSSkiplist" << endl;
 		fastws::WSSkiplist<int> sl(data, n);
-		delete data;
+		delete[] data;
 		cout << sl;
 		sl.find(16);
 		cout << sl;
@@ -48,7 +49,7 @@ int main(int argc, char **argv) {
 	}
 	cout << "Done!" << endl;
 
-	big_test(10000);
+	big_test(100000);
 	return 0;
 }
 
