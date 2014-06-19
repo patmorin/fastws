@@ -27,8 +27,8 @@ protected:
 	struct NP;
 
 	struct Node {
-		int w;   // the working-set number (not always correct)
-		T x;     // data
+		int w; // the working-set number (not always correct)
+		T x;   // data
 
 		// these maintain a global queue ordered by working-set number
 		Node *qnext;
@@ -41,6 +41,7 @@ protected:
 	int *n;
 	int k;
 
+	int n0max;
 	int *a;
 	int *b;
 
@@ -48,6 +49,7 @@ protected:
 	void rebuild(int k);
 
 	Node *newNode();
+	void deleteNode(Node *u);
 
 	// FIXME: integer only
 	int cmp(const T &a, const T &b) {
@@ -71,20 +73,24 @@ template<class T>
 void WSSkiplist<T>::init(T *data, int n0) {
 
 	// Compute critical values depending on epsilon
-	double eps = 0.5;
-	k = 2.0 + log(n0) / log(1+eps);
+	double eps = 0.6;
+	n0max = ceil(2./eps);
+	cout << "n0max = " << n0max << endl;
+	k = ceil(log(n0) / log(2-eps));
     a = new int[k+1];
     b = new int[k+1];
     for (int i = 0; i <= k; i++) {
     	a[i] = pow(2.-eps, i);
     	b[i] = pow(2.-eps/2, i);
-    	cout << a[i] << "," << b[i] << endl;
+    	cout << "a[" << i << "]=" << a[i]
+			 << ", b[" << i << "]=" << b[i] << endl;
     }
 
 	n = new int[k+1];
 	n[k] = n0;
 	sentinel = newNode();
 	sentinel->x = -1; // FIXME: non-negative integer only
+	sentinel->qnext = sentinel->qprev = sentinel;
 	Node *prev = sentinel;
 	for (int i = 0; i < n0; i++) {
 		Node *u = newNode();
@@ -108,6 +114,11 @@ typename WSSkiplist<T>::Node* WSSkiplist<T>::newNode() {
 }
 
 template<class T>
+void WSSkiplist<T>::deleteNode(Node *u) {
+	free(u);
+}
+
+template<class T>
 void WSSkiplist<T>::rebuild(int k) {
 	// compute working-set numbers of relevant nodes
 	Node *u = sentinel->qnext;
@@ -122,7 +133,7 @@ void WSSkiplist<T>::rebuild(int k) {
 		Node *u = sentinel->next[i + 1];
 		Node *prev = sentinel;
 		int w = a[i];
-		cout << "i = " << i << ", w = " << w << endl;
+		// cout << "i = " << i << ", w = " << w << endl;
 		bool skipped = false;
 		while (u != NULL) {
 			if (skipped || u->w <= w) {
@@ -148,27 +159,27 @@ void WSSkiplist<T>::rebuild(int k) {
 
 template<class T>
 T WSSkiplist<T>::find(T x) {
-	cout << "Searching for " << x << ":";
+	// cout << "Searching for " << x << ":";
 	Node *stack[50]; // FIXME: fixed upper bound
 	Node *u = sentinel;
 	int c = -1, i = 0;
 	while (u->next[i] != NULL && (c = cmp(u->next[i]->x, x)) < 0)
 		u = u->next[i];
 	stack[i] = u;
-	cout << u->x << ",";
+	// cout << u->x << ",";
 	if (c != 0) {
 		for (i = 1; i <= k; i++) {
 			if (u->next[i] != NULL && (c = cmp(u->next[i]->x, x)) < 0)
 				u = u->next[i];
 			stack[i] = u;
-			if (c == 0)
-				break;
-			cout << u->x << ",";
+			if (c == 0)	break;
+			// cout << u->x << ",";
 		}
-		cout << endl;
+		// cout << endl;
 	}
 
 	// Search is done: we're going to return w->x
+	i = i > k ? k : i;
 	Node *w = u->next[i];
 	if (w == NULL)
 		return (T) NULL;  // FIXME: not portable
@@ -189,22 +200,32 @@ T WSSkiplist<T>::find(T x) {
 	sentinel->qnext->qprev = w;
 	sentinel->qnext = w;
 
+	// check for rebuild
+	if (n[0] > n0max) {
+		// cout << "Rebuild triggered: n[0] = " << n[0] << endl;
+		for (i = 0; n[i] > b[i]; i++);
+		// cout << "Rebuilding at L_" << i << endl;
+		rebuild(i);
+	}
+
+
 	return w->x;
 }
 
 template<class T>
 WSSkiplist<T>::~WSSkiplist() {
-	Node *u = sentinel;
-	while (u != NULL) {
-		Node *prev = u;
-		u = u->next[k];
-		delete prev;
+	Node *prev = sentinel;
+	while (prev != NULL) {
+		Node *u = prev->next[k];
+		prev->next[k] = NULL;
+		deleteNode(prev);
+		prev = u;
 	}
 }
 
 template<class T>
 void WSSkiplist<T>::printOn(std::ostream &out) {
-	cout << "WSSkiplist: n = " << n << ", k = " << k << endl;
+	cout << "WSSkiplist: n = " << n[k] << ", k = " << k << endl;
 	for (int i = 0; i <= k; i++) {
 		cout << "L(" << i << "): ";
 		Node *u = sentinel->next[i];
@@ -227,9 +248,8 @@ template<class T>
 ostream& operator<<(ostream &out, WSSkiplist<T> &sl) {
 	sl.printOn(out);
 	return out;
-
 }
 
-}
+} // fastws namespace
 
 #endif // FASTWS_WSSKIPLIST_H_
