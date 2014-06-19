@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
 	}
 	cout << "Done!" << endl;
 
-	big_test(100000);
+	big_test(50000);
 	return 0;
 }
 
