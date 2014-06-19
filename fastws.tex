@@ -96,20 +96,21 @@ only have an asymptotically optimal $O(\log n)$ search time, but the
 constants are also small.
 
 A more recent trend---that goes back only 30 years \cite{X}---are data
-structures with special \emph{properties} which allow for running
+structures with special \emph{properties} that allow for running
 times that are parametrized by values other than $n$.  For example,
 the \emph{working-set property} states that the time to access (search
 for) an element, $x$, is $O(\log w(x))$, where $w(x)$ is the number
 of distinct values accessed since the last access to $x$. Several data
 structures have the working set property, including splay trees \cite{S}
-and Iacono's working set structure \cite{S}.  However, we do not find
-either of these data structures in any major programming library.
+and Iacono's working set structure \cite{S}.  However, we find
+these data structures in very few programming libraries and certainly
+not in any of the standard libraries of any major programming language.
 
-The reason for this is not that the working-set property is not practical.
-Indeed, the opposite is true: many applications exhibit the kind of
-temporal locality that would favour a data structure with the working-set
-property.  The reasons are more practical, and are best exemplified with a
-numerical example.
+The reason for this is not that the working-set property is not useful
+in practice.  Indeed, the opposite is true: many applications exhibit
+the kind of temporal locality that would favour a data structure with
+the working-set property.  The reasons are more practical, and are best
+exemplified with a numerical example.
 
 Consider a binary search tree, $T$, that contains $n=10^6$ elements, and
 is implemented using Andersson, Lai, or Fagerberg's binary search trees.
@@ -790,7 +791,7 @@ working-set property for two reasons:
 
 \section{Working-Set Skiplists}
 
-We call this data structures a \emph{working-set skiplist} because it is a variant of a skiplist \cite{S}.  It consists of a sequence of lists $L_0,\ldots,L_k$ where
+We call our data structures a \emph{working-set skiplist} because it is a variant of a skiplist \cite{S}.  It consists of a sequence of lists $L_0,\ldots,L_k$ where
 \begin{enumerate}
   \item $|L_0|\in O(\epsilon^{-1})$
   \item every element in $L_i$ appears in $L_{i+1}$ for all
@@ -808,7 +809,7 @@ For ease of exposition, we will assume that each list $L_i$ contains the values 
 
 The working-set skiplist is maintained through \emph{partial rebuilding} of the \emph{top} of the skiplist.  When partial rebuilding is triggered at level $i$, the lists $L_0,\ldots,L_{i-1}$ are discarded and rebuilt using the $n_i$ elements in $L_i$.  This rebuilding is done in such a way that the lists $L_0,\ldots,L_{i-1}$ are guaranteed to satisify Properties~2--4.
 
-Rebuilding done bottom-up by traversing $L_i$ and promoting any element
+Rebuilding is done bottom-up by traversing $L_i$ and promoting any element
 $x$ with $w(x)\le (2-\epsilon)^{i-1}$ as well as any element that would
 violate Property~4.  More specifically, we promote any element $x$ that
 would otherwise be the second of two consecutive unpromoted elements.
@@ -964,9 +965,14 @@ lists $L_4,L_9,L_{16},L_{25},\ldots,L_{\left\lceil\sqrt{i}\right\rceil^2}$.  It 
 means that it will perform an additional $O(\sqrt{i})$ comparisons in
 navigating the lists $L_{i+1},L_{i+2},\ldots,L_{\left\lceil\sqrt{i}\right\rceil^2}$.
 However, since $i\le (1+\epsilon)\log w(x)$, this is only an additional
-$O(\sqrt{\log w(x)}$ comparisons.
+$O(\sqrt{\log w(x)})$ comparisons.
 
 \subsection{Handling Searches for Missing Values}
+
+One issue that is often overlooked
+
+\subsection{Handling Insertions and Deletions}
+
 
 \section*{Acknowledgement}
 
