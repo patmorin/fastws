@@ -1,11 +1,13 @@
 /**
- * (c) 2014 Pat Morin, Released under a Creative Commons Attribution (CC-BY) license.
+ * (c) 2014 Pat Morin, Released under a Creative Commons Attribution (CC-BY)
+ *     license.
  *
  * wsskiplist.h : An implementation of the working-set skiplist structure
  *
- * This particular implementation is a space hog.  Every element in the structure has its own array
- * of length k=Theta(log n)$ that is used to store its previous and next pointers.  This avoids the
- * allocating and freeing of nodes when nodes are promoted or levels are rebuilt.
+ * This particular implementation is a space hog.  Every element in the
+ * structure has its own array of length k=Theta(log n)$ that is used to
+ * store its previous and next pointers.  This avoids the allocating and
+ * freeing of nodes when nodes are promoted or levels are rebuilt.
  */
 #ifndef FASTWS_WSSKIPLIST_H_
 #define FASTWS_WSSKIPLIST_H_
@@ -121,10 +123,11 @@ void WSSkiplist<T>::deleteNode(Node *u) {
 template<class T>
 void WSSkiplist<T>::rebuild(int k) {
 	// compute working-set numbers of relevant nodes
+	cout << "Rebuilding L_" << k << endl;
 	Node *u = sentinel->qnext;
 	int wmax = a[k-1];
-	for (int i = 0; i < wmax; i++) {
-		u->w = i;
+	for (int i = 0; i <= wmax; i++) {
+		u->w = i+1;
 		u = u->qnext;
 	}
 
