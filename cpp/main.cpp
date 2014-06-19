@@ -1,30 +1,98 @@
 #include <iostream>
 #include <cstdlib>
+#include <cstdio>
+#include <ctime>
 using namespace std;
 
 #include "wsskiplist.h"
 
-void big_test(int n) {
+
+int int_cmp(const int &a, const int &b) {
+	return a - b;
+}
+
+void big_test(int n, double eps) {
 	cout << "Creating " << n << " data items" << endl;
 	int *data = new int[n];
 	for (int i = 0; i < n; i++)
 		data[i] = i + 1;
 	{
 		cout << "Creating WSSkiplist" << endl;
-		fastws::WSSkiplist<int> sl(data, n);
+		fastws::WSSkiplist<int> sl(data, n, int_cmp, eps);
 		delete[] data;
-		sl.find(16);
-		sl.find(22);
-		cout << "Doing lots of searches" << endl;
-		for (int i = 0; i < n; i++) {
+		cout << "Doing " << 4*n << " searches" << endl;
+		for (int i = 0; i < 4*n; i++) {
 			sl.find(rand() % n);
 		}
+		cout << sl;
 		cout << "Cleaning up WSSkiplist" << endl;
 	}
 	cout << "Done!" << endl;
 }
 
+template<class Dict>
+void random_searches(Dict &d, char *name) {
+	clock_t start = clock();
+	int n = d.size();
+	for (int i = 0; i < 3*n; i++) {
+		d.find(rand() % n);
+	}
+	clock_t stop = clock();
+	double elapsed = ((double)(stop-start))/CLOCKS_PER_SEC;
+	cout << name << " RANDOM FIND " << n << " " << elapsed << endl;
+}
+
+template<class Dict>
+void fractional_searches(Dict &d, char *name, double percentage) {
+	int n = d.size();
+	int m = n * percentage;
+	int *queries = new int[m];
+	for (int i = 0; i < m; i++)
+		queries[i] = rand() % n;
+
+	clock_t start = clock();
+	for (int i = 0; i < 3*n; i++) {
+		d.find(queries[rand() % m]);
+	}
+	clock_t stop = clock();
+	delete[] queries;
+	double elapsed = ((double)(stop-start))/CLOCKS_PER_SEC;
+	cout << name << " FRACTIONAL(" << percentage << ") FIND "
+			<< n << " " << elapsed << endl;
+}
+
+
 int main(int argc, char **argv) {
+	int n = 1000;
+	cout << argc << endl;
+	if (argc == 2)
+		n = atoi(argv[1]);
+
+	int *data = new int[n];
+	for (int i = 0; i < n; i++)
+		data[i] = i + 1;
+
+	double epsilon = .45;
+	for (double percentage = 1; percentage > 0; percentage -= .01) {
+		fastws::WSSkiplist<int> sl(data, n, int_cmp, epsilon);
+		char name[100];
+		sprintf(name, "WSSkiplist(%lf)", epsilon);
+		fractional_searches<fastws::WSSkiplist<int> >(sl, name, percentage);
+	}
+
+
+/*  Using the following code, we determined that the optimal for epsilon
+ *  is about .45
+	for (double epsilon = .6; epsilon >= .1; epsilon -= .01) {
+		fastws::WSSkiplist<int> sl(data, n, int_cmp, epsilon);
+		char name[100];
+		sprintf(name, "WSSkiplist(%lf)", epsilon);
+		random_searches<fastws::WSSkiplist<int> >(sl, name);
+	}
+*/
+
+
+/*
 	int n = 40;
 
 	cout << "Creating " << n << " data items" << endl;
@@ -48,8 +116,9 @@ int main(int argc, char **argv) {
 		}
 	}
 	cout << "Done!" << endl;
+*/
 
-	big_test(100000);
+	big_test(n, .44);
 	return 0;
 }
 
