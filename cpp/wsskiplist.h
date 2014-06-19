@@ -39,44 +39,47 @@ protected:
 		Node *next[]; // a stack of next pointers
 	};
 
-	Node *sentinel;
-	int *n;
-	int k;
+	int k;    // there are k+1 lists numbered 0,...,k
+	int *n;   // n[i] is the size of the i'th list
+	Node *sentinel; // sentinel-next[i] is the first element of list i
 
+	// parameters used to determine lists sizes
+	double eps;
 	int n0max;
 	int *a;
 	int *b;
 
-	void init(T *data, int n);
-	void rebuild(int k);
+	// FIXME: for profiling information
+	int *rebuild_freqs;
 
-	void sanity() {
-		for (int i = 0; i <= k; i++) {
-			Node *u = sentinel;
-			for (int j = 0; j < n[i]; j++)
-				u = u->next[i];
-			assert(u->next[i] == NULL);
-		}
-	}
+	void init(T *data, int n);
+	void rebuild(int i);
+
+	void sanity();
 
 	Node *newNode();
 	void deleteNode(Node *u);
 
 	// FIXME: integer only
-	int cmp(const T &a, const T &b) {
-		return a - b;
-	}
+	int (*cmp)(const T &a, const T &b);
 
 public:
-	WSSkiplist(T *data, int n0);
+	WSSkiplist(T *data, int n0, int (*cmp0)(const T&, const T&),
+			double eps0);
 	virtual ~WSSkiplist();
 	T find(T x);
+	int size() {
+		return n[k];
+	}
 
 	void printOn(std::ostream &out);
 };
 
 template<class T>
-WSSkiplist<T>::WSSkiplist(T *data, int n0) {
+WSSkiplist<T>::WSSkiplist(T *data, int n0, int (*cmp0)(const T&, const T&),
+	double eps0) {
+	eps = eps0;
+	cmp = cmp0;
 	init(data, n0);
 }
 
@@ -84,20 +87,25 @@ template<class T>
 void WSSkiplist<T>::init(T *data, int n0) {
 
 	// Compute critical values depending on epsilon
-	double eps = 0.6;
-	n0max = ceil(2./eps);
+	n0max = ceil(2. / eps);
 	cout << "n0max = " << n0max << endl;
-	k = ceil(log(n0) / log(2-eps));
-    a = new int[k+1];
-    b = new int[k+1];
-    for (int i = 0; i <= k; i++) {
-    	a[i] = pow(2.-eps, i);
-    	b[i] = pow(2.-eps/2, i);
-    	cout << "a[" << i << "]=" << a[i]
-			 << ", b[" << i << "]=" << b[i] << endl;
-    }
+	double base_a = 2.0-eps;
+	double base_b = 2.0-eps/2;
+	k = ceil(log(n0) / log(base_a));
+	a = new int[k + 1];
+	b = new int[k + 1];
+	int offset = ceil(log(n0max)/log(base_b))-1;
+	k -= offset;
+	for (int i = 0; i <= k; i++) {
+		a[i] = pow(base_a, i+offset);
+		b[i] = pow(base_b, i+offset);
+		cout << "a[" << i << "]=" << a[i] << ", b[" << i << "]=" << b[i]
+				<< endl;
+	}
 
-	n = new int[k+1]();
+	rebuild_freqs = new int[k + 1]();
+
+	n = new int[k + 1]();
 
 	n[k] = n0;
 	sentinel = newNode();
@@ -131,48 +139,42 @@ void WSSkiplist<T>::deleteNode(Node *u) {
 }
 
 template<class T>
-void WSSkiplist<T>::rebuild(int k) {
+void WSSkiplist<T>::rebuild(int i) {
+
+	rebuild_freqs[i]++;
 
 	// compute working-set numbers of relevant nodes
 	Node *u = sentinel->qnext;
-	int wmax = a[k-1];
-	for (int i = 0; i <= wmax; i++) {
-		u->w = i+1;
+	int wmax = a[i - 1];
+	for (int t = 0; t <= wmax; t++) {
+		u->w = t + 1;
 		u = u->qnext;
 	}
 
-	for (int i = k - 1; i >= 0; i--) {
-		// empty L_i
-		Node *u = sentinel;
-		for (int j = 0; j < n[i]; j++) {
-			Node *prev = u;
-			u = u->next[i];
-			prev->next[i] = NULL;
-		}
-		assert(u->next[i] == NULL);
-		n[i] = 0;
-
-		// repopulate L_i using L_{i+1}
-		u = sentinel->next[i + 1];
+	for (int j = i - 1; j >= 0; j--) {
+		// populate L_j using L_{j+1}
+		n[j] = 0;
+		u = sentinel->next[j + 1];
 		Node *prev = sentinel;
-		int w = a[i];
+		int w = a[j];
 		bool skipped = false;
 		while (u != NULL) {
 			if (skipped || u->w <= w) {
-				prev->next[i] = u;
+				prev->next[j] = u;
 				prev = u;
-				n[i]++;
+				n[j]++;
 				skipped = false;
 			} else {
 				skipped = true;
 			}
-			u = u->next[i + 1];
+			u = u->next[j + 1];
 		}
+		prev->next[j] = NULL;
 	}
 
 	// reset all working-set numbers
 	u = sentinel->qnext;
-	for (int i = 0; i < wmax; i++) {
+	for (int t = 0; t < wmax; t++) {
 		u->w = INT_MAX;
 		u = u->qnext;
 	}
@@ -192,7 +194,8 @@ T WSSkiplist<T>::find(T x) {
 			if (u->next[i] != NULL && (c = cmp(u->next[i]->x, x)) < 0)
 				u = u->next[i];
 			blech[i] = u;
-			if (c == 0)	break;
+			if (c == 0)
+				break;
 		}
 	}
 
@@ -222,7 +225,8 @@ T WSSkiplist<T>::find(T x) {
 
 	// check for rebuild
 	if (n[0] > n0max) {
-		for (i = 0; n[i] > b[i]; i++);
+		for (i = 0; n[i] > b[i]; i++)
+			;
 		rebuild(i);
 	}
 
@@ -241,25 +245,45 @@ WSSkiplist<T>::~WSSkiplist() {
 }
 
 template<class T>
+void WSSkiplist<T>::sanity() {
+	assert(n[0] <= n0max);
+	for (int i = 0; i <= k; i++) {
+		Node *u = sentinel;
+		for (int j = 0; j < n[i]; j++) {
+			assert(u == sentinel || u->x < u->next->x);
+			assert(u->w == INT_MAX);
+			u = u->next[i];
+		}
+		assert(u->next[i] == NULL);
+	}
+}
+
+template<class T>
 void WSSkiplist<T>::printOn(std::ostream &out) {
+	const int max_print = 50;
 	cout << "WSSkiplist: n = " << n[k] << ", k = " << k << endl;
 	for (int i = 0; i <= k; i++) {
 		cout << "L(" << i << "): ";
-		Node *u = sentinel->next[i];
-		for (int j = 0; j < n[i]; j++) {
-			cout << u->x << ",";
-			u = u->next[i];
+		if (n[k] <= max_print) {
+			Node *u = sentinel->next[i];
+			for (int j = 0; j < n[i]; j++) {
+				cout << u->x << ",";
+				u = u->next[i];
+			}
+			assert(u == NULL);
 		}
-		assert(u == NULL);
-		cout << " n(" << i << ") = " << n[i] << endl;
+		cout << " n(" << i << ") = " << n[i]
+		     << " (rebuilt " << rebuild_freqs[i] << " times)" << endl;
 	}
-	cout << "q = ";
-	Node *u = sentinel->qnext;
-	while (u != sentinel) {
-		cout << u->x << ",";
-		u = u->qnext;
+	if (n[k] <= max_print) {
+		cout << "q = ";
+		Node *u = sentinel->qnext;
+		while (u != sentinel) {
+			cout << u->x << ",";
+			u = u->qnext;
+		}
+		cout << endl;
 	}
-	cout << endl;
 }
 
 template<class T>
