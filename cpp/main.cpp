@@ -10,28 +10,36 @@ using namespace std;
 #include "wsskiplist.h"
 #include "topskiplist.h"
 
+// Compare the results of
+template<class Dict1, class Dict2>
+void test_dicts(Dict1 &d1, Dict2 &d2, int n) {
+	for (int i = 0; i < n; i++) {
+		int x = rand() % 5*n;
+		assert(d1.add(x) == d2.add(x));
+	}
 
-int int_cmp(const int &a, const int &b) {
-	return a - b;
+	for (int i = 0; i < 5*n; i++) {
+		int x = rand() % (5*(n+1))-2;
+		assert(d1.find(x) == d2.find(x));
+	}
 }
 
-void big_test(int n, double eps) {
-	cout << "Creating " << n << " data items" << endl;
-	int *data = new int[n];
+
+template<class Dict>
+void build_and_search(Dict &d, const char *name, int n) {
+	clock_t start = clock();
 	for (int i = 0; i < n; i++)
-		data[i] = i + 1;
-	{
-		cout << "Creating WSSkiplist" << endl;
-		fastws::TopSkiplist<int> sl(data, n, int_cmp, eps);
-		delete[] data;
-		cout << "Doing " << 4*n << " searches" << endl;
-		for (int i = 0; i < 4*n; i++) {
-			sl.find(rand() % n);
-		}
-		cout << sl;
-		cout << "Cleaning up WSSkiplist" << endl;
-	}
-	cout << "Done!" << endl;
+		d.add(rand() % (5*n));
+	clock_t stop = clock();
+	double elapsed = ((double)(stop-start))/CLOCKS_PER_SEC;
+	cout << name << " RANDOM ADD " << n << " " << elapsed << endl;
+
+	start = clock();
+	for (int i = 0; i < 5*n; i++)
+		d.find(rand() % (5*n));
+	stop = clock();
+	elapsed = ((double)(stop-start))/CLOCKS_PER_SEC;
+	cout << name << " RANDOM FIND " << n << " " << elapsed << endl;
 }
 
 template<class Dict>
@@ -67,11 +75,63 @@ void fractional_searches(Dict &d, char *name, double percentage) {
 
 
 int main(int argc, char **argv) {
-	int n = 10000;
-	cout << argc << endl;
+
+#ifdef XXXX
+	int n = 43;
+
+	cout << "Creating " << n << " data items" << endl;
+	fastws::TopSkiplist<int> tsl(NULL, 0, .45);
+	for (int i = 0; i < n; i++) {
+		tsl.add(48*i % (2*n));
+		cout << tsl;
+	}
+	for (int i = 0; i < n; i++) {
+		int x = rand() % (2*(n+1))-1;
+		cout << x << " => " << tsl.find(x) << endl;
+	}
+	exit(0);
+#endif // XXX
+
+	int n = 100000;
 	if (argc == 2)
 		n = atoi(argv[1]);
 
+
+/*
+	{
+		for (double eps = .7; eps > .01; eps -= .01) {
+			fastws::TopSkiplist<int> tsl(NULL, 0, eps);
+			char name[100];
+			sprintf(name, "%f", eps);
+			build_and_search(tsl, name, n);
+		}
+	}
+*/
+
+	for (int n = 10000; n <= 10000000; n += 10000) {
+		{
+			fastws::TopSkiplist<int> tsl(NULL, 0, .41);
+			ods::Treap1<int> t;
+			test_dicts(tsl, t, 1000000);
+		}
+
+		{
+			fastws::TopSkiplist<int> tsl(NULL, 0, .41);
+			build_and_search(tsl, "TopSkiplist", n);
+		}
+
+		{
+			ods::SkiplistSSet<int> sl;
+			build_and_search(sl, "Skiplist", n);
+		}
+
+		{
+			ods::Treap1<int> t;
+			build_and_search(t, "Treap", n);
+		}
+	}
+
+#ifdef XXXXXX
 	int *data = new int[n];
 	for (int i = 0; i < n; i++)
 		data[i] = i + 1;
@@ -100,11 +160,9 @@ int main(int argc, char **argv) {
 	double epsilon = .45;
 	for (double percentage = 1; percentage > 0; percentage -= .01) {
 		fastws::TopSkiplist<int> sl(data, n, int_cmp, epsilon);
-		char name[100];
-		sprintf(name, "WSSkiplist(%lf)", epsilon);
-		fractional_searches<fastws::TopSkiplist<int> >(sl, name, percentage);
+		fractional_searches<fastws::TopSkiplist<int> >(sl, "TopSkiplist", percentage);
 	}
-
+#endif // XXXXX
 
 /*  Using the following code, we determined that the optimal for epsilon
  *  is about .45; but the running-times are _very_ sensitive to epsilon
@@ -117,31 +175,6 @@ int main(int argc, char **argv) {
 */
 
 
-/*
-	int n = 40;
-
-	cout << "Creating " << n << " data items" << endl;
-	int *data = new int[n];
-	for (int i = 0; i < n; i++) {
-		data[i] = i + 1;
-	}
-	{
-		cout << "Creating WSSkiplist" << endl;
-		fastws::WSSkiplist<int> sl(data, n);
-		delete[] data;
-		cout << sl;
-		sl.find(16);
-		cout << sl;
-		sl.find(22);
-		cout << sl;
-		cout << "Cleaning up WSSkiplist" << endl;
-		for (int i = 0; i < n; i++) {
-			sl.find(rand() % n);
-			cout << sl;
-		}
-	}
-	cout << "Done!" << endl;
-*/
 
 	// big_test(n, .44);
 	return 0;

@@ -115,7 +115,7 @@ T SplayTree<Node, T>::find(T x) {
 template<class Node, class T>
 bool SplayTree<Node, T>::remove(T x) {
 	Node *u = findLast(x);
-	if (u != nil && compare(u->x, x) == 0) {
+	if (u != nil && u->x == x) {
 		splice(u);
 		delete u;
 		return true;

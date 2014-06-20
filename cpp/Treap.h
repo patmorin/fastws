@@ -97,7 +97,7 @@ void Treap<Node, T>::bubbleUp(Node *u) {
 template<class Node, class T>
 bool Treap<Node, T>::remove(T x) {
 	Node *u = findLast(x);
-	if (u != nil && compare(u->x, x) == 0) {
+	if (u != nil && u->x == x) {
 		trickleDown(u);
 		splice(u);
 		delete u;

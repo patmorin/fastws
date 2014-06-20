@@ -32,13 +32,8 @@ protected:
 	struct NP;
 
 	struct Node {
-		int w; // the working-set number (not always correct)
-		T x;   // data
-
-		// these maintain a global queue ordered by working-set number
-		Node *qnext;
-		Node *qprev;
-
+		int w;        // the working-set number (not always correct)
+		T x;          // data
 		Node *next[]; // a stack of next pointers
 	};
 
@@ -50,12 +45,12 @@ protected:
 	double eps;
 	int n0max;
 	int *a;
-	int *b;
 
 	// FIXME: for profiling information
 	int *rebuild_freqs;
 
 	void init(T *data, int n);
+	void rebuild();
 	void rebuild(int i);
 
 	void sanity();
@@ -63,14 +58,11 @@ protected:
 	Node *newNode();
 	void deleteNode(Node *u);
 
-	// FIXME: integer only
-	int (*cmp)(const T &a, const T &b);
-
 public:
-	TopSkiplist(T *data, int n0, int (*cmp0)(const T&, const T&),
-			double eps0);
+	TopSkiplist(T *data, int n0, double eps0);
 	virtual ~TopSkiplist();
 	T find(T x);
+	bool add(T x);
 	int size() {
 		return n[k];
 	}
@@ -79,58 +71,49 @@ public:
 };
 
 template<class T>
-TopSkiplist<T>::TopSkiplist(T *data, int n0, int (*cmp0)(const T&, const T&),
-	double eps0) {
+TopSkiplist<T>::TopSkiplist(T *data, int n0, double eps0) {
 	eps = eps0;
-	cmp = cmp0;
+
+	int kmax = 100; // FIXME: potential limitation here
+	rebuild_freqs = new int[kmax+1]();
+	double base_a = 2.0-eps;
+	a = new int[kmax+1];
+	//int offset = ceil(log(n0max)/log(base_a))-1;
+	int offset = 0;
+	k -= offset;
+	for (int i = 0; i <= kmax; i++) {
+		a[i] = pow(base_a, i+offset);
+		// cout << "a[" << i << "]=" << a[i] << endl;
+	}
+
 	init(data, n0);
 }
 
 template<class T>
 void TopSkiplist<T>::init(T *data, int n0) {
 
-	// Compute critical values depending on epsilon
+	// Compute critical values depending on epsilon and n
 	n0max = ceil(2. / eps);
-	cout << "n0max = " << n0max << endl;
-	double base_a = 2.0-eps;
-	double base_b = 2.0-eps/2;
-	k = ceil(log(n0) / log(base_a));
-	a = new int[k + 1];
-	b = new int[k + 1];
-	int offset = ceil(log(n0max)/log(base_b))-1;
-	k -= offset;
-	for (int i = 0; i <= k; i++) {
-		a[i] = pow(base_a, i+offset);
-		b[i] = pow(base_b, i+offset);
-		cout << "a[" << i << "]=" << a[i] << ", b[" << i << "]=" << b[i]
-				<< endl;
-	}
-
-	rebuild_freqs = new int[k + 1]();
+	// cout << "n0max = " << n0max << endl;
+	k = 1 + max(0.0, ceil(log(n0) / log(2-eps)));
 
 	n = new int[k + 1]();
 
 	n[k] = n0;
 	sentinel = newNode();
-	sentinel->x = -1; // FIXME: non-negative integer only
-	sentinel->qnext = sentinel->qprev = sentinel;
 	Node *prev = sentinel;
 	for (int i = 0; i < n0; i++) {
 		Node *u = newNode();
 		u->x = data[i];
 		prev->next[k] = u;
-		u->qprev = prev;
-		prev->qnext = u;
 		prev = u;
 	}
-	prev->qnext = sentinel; // the queue is a circular list
 	rebuild(k);
 }
 
 template<class T>
 typename TopSkiplist<T>::Node* TopSkiplist<T>::newNode() {
 	Node *u = (Node *) malloc(sizeof(Node) + (k + 1) * sizeof(Node*));
-	u->qnext = u->qprev = NULL;
 	u->w = INT_MAX;
 	memset(u->next, '\0', (k + 1) * sizeof(Node*));
 	return u;
@@ -142,22 +125,32 @@ void TopSkiplist<T>::deleteNode(Node *u) {
 }
 
 template<class T>
+void TopSkiplist<T>::rebuild() {
+	// time to rebuild --- free everything and start over
+	// TODO: Put some padding in so we only do this O(loglog n) times
+	T *data = new T[n[k]];
+	Node *prev = sentinel;
+	Node *u = sentinel->next[k];
+	for (int j = 0; j < n[k]; j++) {
+		data[j] = u->x;
+		deleteNode(prev);
+		prev = u;
+		u = u->next[k];
+	}
+	deleteNode(prev);
+	init(data, n[k]);
+}
+
+
+template<class T>
 void TopSkiplist<T>::rebuild(int i) {
 
 	rebuild_freqs[i]++;
 
-	// compute working-set numbers of relevant nodes
-	Node *u = sentinel->qnext;
-	int wmax = a[i - 1];
-	for (int t = 0; t <= wmax; t++) {
-		u->w = t + 1;
-		u = u->qnext;
-	}
-
 	for (int j = i - 1; j >= 0; j--) {
 		// populate L_j using L_{j+1}
 		n[j] = 0;
-		u = sentinel->next[j + 1];
+		Node *u = sentinel->next[j + 1];
 		Node *prev = sentinel;
 		int w = a[j];
 		bool skipped = false;
@@ -175,13 +168,6 @@ void TopSkiplist<T>::rebuild(int i) {
 		prev->next[j] = NULL;
 	}
 
-	// reset all working-set numbers
-	u = sentinel->qnext;
-	for (int t = 0; t < wmax; t++) {
-		u->w = INT_MAX;
-		u = u->qnext;
-	}
-
 }
 
 template<class T>
@@ -194,13 +180,50 @@ T TopSkiplist<T>::find(T x) {
 		if (u->next[i] != NULL && u->next[i]->x < x)
 			u = u->next[i];
 	}
+	Node *w = u->next[k];
+	return (w == NULL) ? (T)NULL : w->x;
+}
 
-	// Search is done: we're going to return w->x
-	i = i > k ? k : i;
-	Node *w = u->next[i];
-	if (w == NULL)
-		return (T) NULL;  // FIXME: not portable
-	return w->x;
+template<class T>
+bool TopSkiplist<T>::add(T x) {
+	// do a search for x and keep track of the search path
+	Node *path[50]; // FIXME: hard upper-bound
+	Node *u = sentinel;
+	int i = 0;
+	while (u->next[i] != NULL && u->next[i]->x < x)
+		u = u->next[i];
+	path[i] = u;
+	for (i = 1; i <= k; i++) {
+		if (u->next[i] != NULL && u->next[i]->x < x)
+			u = u->next[i];
+		path[i] = u;
+	}
+
+	// check if x is already here and, if so, abort
+	Node *w = u->next[k];
+	if (w != NULL && w->x == x)
+		return false;
+
+	// insert x everywhere along the search path
+	w = newNode();
+	w->x = x;
+	for (i = k; i >= 0; i--) {
+		w->next[i] = path[i]->next[i];
+		path[i]->next[i] = w;
+		n[i]++;
+	}
+
+	// check if we need to add another level on the bottom
+	if (n[k] > a[k])
+		rebuild();
+
+	// do partial rebuilding, if necessary
+	if (n[0] > n0max) {
+		for (i = 1; n[i] > a[i]; i++);
+		assert(i <= k);
+		rebuild(i);
+	}
+	return true;
 }
 
 template<class T>
@@ -244,15 +267,6 @@ void TopSkiplist<T>::printOn(std::ostream &out) {
 		}
 		cout << " n(" << i << ") = " << n[i]
 		     << " (rebuilt " << rebuild_freqs[i] << " times)" << endl;
-	}
-	if (n[k] <= max_print) {
-		cout << "q = ";
-		Node *u = sentinel->qnext;
-		while (u != sentinel) {
-			cout << u->x << ",";
-			u = u->qnext;
-		}
-		cout << endl;
 	}
 }
 

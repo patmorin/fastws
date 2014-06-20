@@ -63,8 +63,7 @@ typename SkiplistSSet<T>::Node* SkiplistSSet<T>::findPredNode(T x) {
 	Node *u = sentinel;
 	int r = h;
 	while (r >= 0) {
-		while (u->next[r] != NULL 
-               && compare(u->next[r]->x, x) < 0)
+		while (u->next[r] != NULL && u->next[r]->x < x)
 			u = u->next[r]; // go right in list r
 		r--; // go down into list r-1
 	}
@@ -77,7 +76,7 @@ SkiplistSSet<T>::SkiplistSSet() {
 	n = 0;
 	sentinel = newNode(null, sizeof(int)*8);
 	memset(sentinel->next, '\0', sizeof(Node*)*sentinel->height);
-	stack = (Node**)new Node*[sentinel->height];
+	stack = new Node*[sentinel->height];
 	h = 0;
 }
 
@@ -85,7 +84,7 @@ template<class T>
 SkiplistSSet<T>::~SkiplistSSet() {
 	clear();
 	deleteNode(sentinel);
-	delete stack;
+	delete[] stack;
 }
 
 template<class T>

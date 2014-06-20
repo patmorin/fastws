@@ -87,10 +87,9 @@ Node* BinarySearchTree<Node,T>::findLast(T x) {
 	Node *w = r, *prev = nil;
 	while (w != nil) {
 		prev = w;
-		int comp = compare(x, w->x);
-		if (comp < 0) {
+		if (x < w->x) {
 			w = w->left;
-		} else if (comp > 0) {
+		} else if (x > w->x) {
 			w = w->right;
 		} else {
 			return w;
@@ -103,10 +102,9 @@ template<class Node, class T>
 T BinarySearchTree<Node,T>::findEQ(T x) {
 	Node *w = r;
 	while (w != nil) {
-		int comp = compare(x, w->x);
-		if (comp < 0) {
+		if (x < w->x) {
 			w = w->left;
-		} else if (comp > 0) {
+		} else if (x > w->x) {
 			w = w->right;
 		} else {
 			return w->x;
@@ -119,11 +117,10 @@ template<class Node, class T>
 T BinarySearchTree<Node,T>::find(T x) {
 	Node *w = r, *z = nil;
 	while (w != nil) {
-		int comp = compare(x, w->x);
-		if (comp < 0) {
+		if (x < w->x) {
 			z = w;
 			w = w->left;
-		} else if (comp > 0) {
+		} else if (x > w->x) {
 			w = w->right;
 		} else {
 			return w->x;
@@ -142,10 +139,9 @@ bool BinarySearchTree<Node, T>::addChild(Node *p, Node *u) {
 		if (p == nil) {
 			r = u;              // inserting into empty tree
 		} else {
-			int comp = compare(u->x, p->x);
-			if (comp < 0) {
+			if (u->x < p->x) {
 				p->left = u;
-			} else if (comp > 0) {
+			} else if (u->x > p->x) {
 				p->right = u;
 			} else {
 				return false;   // u.x is already in the tree
@@ -213,7 +209,7 @@ void BinarySearchTree<Node, T>::remove(Node *u) {
 template<class Node, class T>
 bool BinarySearchTree<Node, T>::remove(T x) {
 	Node *u = findLast(x);
-	if (u != nil && compare(x, u->x) == 0) {
+	if (u != nil && x == u->x) {
 		remove(u);
 		return true;
 	}
