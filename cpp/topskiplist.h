@@ -138,7 +138,10 @@ void TopSkiplist<T>::rebuild() {
 		u = u->next[k];
 	}
 	deleteNode(prev);
-	init(data, n[k]);
+	int enn = n[k];
+	delete[] n;
+	init(data, enn);
+	delete[] data;
 }
 
 
@@ -228,6 +231,9 @@ bool TopSkiplist<T>::add(T x) {
 
 template<class T>
 TopSkiplist<T>::~TopSkiplist() {
+	delete[] n;
+	delete[] a;
+	delete[] rebuild_freqs;
 	Node *prev = sentinel;
 	while (prev != NULL) {
 		Node *u = prev->next[k];

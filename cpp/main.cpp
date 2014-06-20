@@ -92,11 +92,6 @@ int main(int argc, char **argv) {
 	exit(0);
 #endif // XXX
 
-	int n = 100000;
-	if (argc == 2)
-		n = atoi(argv[1]);
-
-
 /*
 	{
 		for (double eps = .7; eps > .01; eps -= .01) {
@@ -108,7 +103,7 @@ int main(int argc, char **argv) {
 	}
 */
 
-	for (int n = 10000; n <= 10000000; n += 10000) {
+	for (int n = 10000; n <= 10000; n += 10000) {
 		{
 			fastws::TopSkiplist<int> tsl(NULL, 0, .41);
 			ods::Treap1<int> t;

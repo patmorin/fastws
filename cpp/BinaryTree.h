@@ -9,6 +9,8 @@
 #define BINARYTREE_H_
 #include <cstdlib>
 
+#include <iostream>
+
 #include "utils.h"
 #include "ArrayDeque.h"
 
