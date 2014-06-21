@@ -8,7 +8,7 @@ using namespace std;
 #include "Treap.h"
 #include "SplayTree.h"
 #include "wsskiplist.h"
-#include "topskiplist.h"
+#include "todolist.h"
 
 // Compare the results of
 template<class Dict1, class Dict2>
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
 	int n = 43;
 
 	cout << "Creating " << n << " data items" << endl;
-	fastws::TopSkiplist<int> tsl(NULL, 0, .45);
+	fastws::TodoList<int> tsl(NULL, 0, .45);
 	for (int i = 0; i < n; i++) {
 		tsl.add(48*i % (2*n));
 		cout << tsl;
@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 /*
 	{
 		for (double eps = .7; eps > .01; eps -= .01) {
-			fastws::TopSkiplist<int> tsl(NULL, 0, eps);
+			fastws::TodoList<int> tsl(NULL, 0, eps);
 			char name[100];
 			sprintf(name, "%f", eps);
 			build_and_search(tsl, name, n);
@@ -103,16 +103,16 @@ int main(int argc, char **argv) {
 	}
 */
 
-	for (int n = 10000; n <= 10000; n += 10000) {
+	for (int n = 10000; n <= 100000; n += 10000) {
 		{
-			fastws::TopSkiplist<int> tsl(NULL, 0, .41);
+			fastws::TodoList<int> tsl(NULL, 0, .41);
 			ods::Treap1<int> t;
 			test_dicts(tsl, t, 1000000);
 		}
 
 		{
-			fastws::TopSkiplist<int> tsl(NULL, 0, .41);
-			build_and_search(tsl, "TopSkiplist", n);
+			fastws::TodoList<int> tsl(NULL, 0, .41);
+			build_and_search(tsl, "TodoList", n);
 		}
 
 		{
@@ -154,8 +154,8 @@ int main(int argc, char **argv) {
 
 	double epsilon = .45;
 	for (double percentage = 1; percentage > 0; percentage -= .01) {
-		fastws::TopSkiplist<int> sl(data, n, int_cmp, epsilon);
-		fractional_searches<fastws::TopSkiplist<int> >(sl, "TopSkiplist", percentage);
+		fastws::TodoList<int> sl(data, n, int_cmp, epsilon);
+		fractional_searches<fastws::TodoList<int> >(sl, "TodoList", percentage);
 	}
 #endif // XXXXX
 

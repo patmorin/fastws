@@ -27,7 +27,7 @@ namespace fastws {
  * A dictionary with the working-set property.
  */
 template<class T>
-class TopSkiplist {
+class TodoList {
 protected:
 	struct NP;
 
@@ -59,8 +59,8 @@ protected:
 	void deleteNode(Node *u);
 
 public:
-	TopSkiplist(T *data, int n0, double eps0);
-	virtual ~TopSkiplist();
+	TodoList(T *data, int n0, double eps0);
+	virtual ~TodoList();
 	T find(T x);
 	bool add(T x);
 	int size() {
@@ -71,7 +71,7 @@ public:
 };
 
 template<class T>
-TopSkiplist<T>::TopSkiplist(T *data, int n0, double eps0) {
+TodoList<T>::TodoList(T *data, int n0, double eps0) {
 	eps = eps0;
 
 	int kmax = 100; // FIXME: potential limitation here
@@ -90,7 +90,7 @@ TopSkiplist<T>::TopSkiplist(T *data, int n0, double eps0) {
 }
 
 template<class T>
-void TopSkiplist<T>::init(T *data, int n0) {
+void TodoList<T>::init(T *data, int n0) {
 
 	// Compute critical values depending on epsilon and n
 	n0max = ceil(2. / eps);
@@ -112,7 +112,7 @@ void TopSkiplist<T>::init(T *data, int n0) {
 }
 
 template<class T>
-typename TopSkiplist<T>::Node* TopSkiplist<T>::newNode() {
+typename TodoList<T>::Node* TodoList<T>::newNode() {
 	Node *u = (Node *) malloc(sizeof(Node) + (k + 1) * sizeof(Node*));
 	u->w = INT_MAX;
 	memset(u->next, '\0', (k + 1) * sizeof(Node*));
@@ -120,12 +120,12 @@ typename TopSkiplist<T>::Node* TopSkiplist<T>::newNode() {
 }
 
 template<class T>
-void TopSkiplist<T>::deleteNode(Node *u) {
+void TodoList<T>::deleteNode(Node *u) {
 	free(u);
 }
 
 template<class T>
-void TopSkiplist<T>::rebuild() {
+void TodoList<T>::rebuild() {
 	// time to rebuild --- free everything and start over
 	// TODO: Put some padding in so we only do this O(loglog n) times
 	T *data = new T[n[k]];
@@ -146,7 +146,7 @@ void TopSkiplist<T>::rebuild() {
 
 
 template<class T>
-void TopSkiplist<T>::rebuild(int i) {
+void TodoList<T>::rebuild(int i) {
 
 	rebuild_freqs[i]++;
 
@@ -174,7 +174,7 @@ void TopSkiplist<T>::rebuild(int i) {
 }
 
 template<class T>
-T TopSkiplist<T>::find(T x) {
+T TodoList<T>::find(T x) {
 	Node *u = sentinel;
 	int i = 0;
 	while (u->next[i] != NULL && u->next[i]->x < x)
@@ -188,7 +188,7 @@ T TopSkiplist<T>::find(T x) {
 }
 
 template<class T>
-bool TopSkiplist<T>::add(T x) {
+bool TodoList<T>::add(T x) {
 	// do a search for x and keep track of the search path
 	Node *path[50]; // FIXME: hard upper-bound
 	Node *u = sentinel;
@@ -230,7 +230,7 @@ bool TopSkiplist<T>::add(T x) {
 }
 
 template<class T>
-TopSkiplist<T>::~TopSkiplist() {
+TodoList<T>::~TodoList() {
 	delete[] n;
 	delete[] a;
 	delete[] rebuild_freqs;
@@ -244,7 +244,7 @@ TopSkiplist<T>::~TopSkiplist() {
 }
 
 template<class T>
-void TopSkiplist<T>::sanity() {
+void TodoList<T>::sanity() {
 	assert(n[0] <= n0max);
 	for (int i = 0; i <= k; i++) {
 		Node *u = sentinel;
@@ -258,7 +258,7 @@ void TopSkiplist<T>::sanity() {
 }
 
 template<class T>
-void TopSkiplist<T>::printOn(std::ostream &out) {
+void TodoList<T>::printOn(std::ostream &out) {
 	const int max_print = 50;
 	cout << "WSSkiplist: n = " << n[k] << ", k = " << k << endl;
 	for (int i = 0; i <= k; i++) {
@@ -277,7 +277,7 @@ void TopSkiplist<T>::printOn(std::ostream &out) {
 }
 
 template<class T>
-ostream& operator<<(ostream &out, TopSkiplist<T> &sl) {
+ostream& operator<<(ostream &out, TodoList<T> &sl) {
 	sl.printOn(out);
 	return out;
 }
