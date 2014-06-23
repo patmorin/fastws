@@ -33,6 +33,7 @@ protected:
 	using BinarySearchTree<Node,T>::rotateLeft;
 	using BinarySearchTree<Node,T>::rotateRight;
 	using BinarySearchTree<Node,T>::splice;
+	using BinaryTree<Node>::size;
 
 	static const int red = 0;
 	static const int black = 1;
@@ -224,7 +225,7 @@ int RedBlackTree<Node,T>::verify(Node *u) {
 	assert(u->right->colour == black || u->left->colour == red);
 	int dl = verify(u->left);
 	int dr = verify(u->right);
-	if (dl != dr)
+	assert (dl == dr);
 	return dl + u->colour;
 }
 
@@ -254,6 +255,8 @@ bool RedBlackTree<Node,T>::add(T x) {
 	bool added = BinarySearchTree<Node,T>::add(u);
 	if (added)
 		addFixup(u);
+	if (n % 10000 == 0)
+		verify();
 	return added;
 }
 

@@ -7,6 +7,8 @@
 #include <iterator>
 using namespace std;
 
+#include <unistd.h>
+
 #include "SkiplistSSet.h"
 #include "Treap.h"
 #include "SplayTree.h"
@@ -15,51 +17,72 @@ using namespace std;
 #include "todolist.h"
 #include "todolist2.h"
 
-// A silly class to use for testing more expensive comparisons
-template<size_t len>
-class DumbString {
-protected:
-	char data[len];
 
+static long global_sum = 0;
+static long global_comparisons = 0;
+
+// A silly class to use for testing more expensive comparisons
+template<size_t del>
+class Integer {
+protected:
+
+	int data;
+
+	void delay() {
+		int tmp = 0;
+		for (int i = 0; i < del; i++) {
+			tmp = (tmp + data) % 733721;
+			global_sum += tmp;
+		}
+		global_comparisons++;
+	}
 public:
-	DumbString() {
-		for (int i = 0; i < len; i++) {
-			data[i] = "CGTA"[rand()%4];
-		}
+	Integer() {
+		data = 0;
 	}
-	DumbString(void* x) {
-		for (int i = 0; i < len; i++) {
-			data[i] = (char)(long)x;
-		}
+	Integer(int i) {
+		data = i;
 	}
-	bool operator <(const DumbString &other) {
-		return strncmp(data, other.data, len) < 0;
+	Integer(const Integer &i) {
+		data = i.data;
 	}
-	bool operator >(const DumbString &other) {
-		return strncmp(data, other.data, len) > 0;
+	bool operator <(const Integer &other) {
+		delay();
+		return data < other.data;
 	}
-	bool operator ==(const DumbString &other) {
-		return strncmp(data, other.data, len) == 0;
+	bool operator >(const Integer &other) {
+		// not delaying here means binary search trees are only charged once
+		// for a three way comparison
+		return data > other.data;
+	}
+	bool operator ==(const Integer &other) {
+		return data == other.data;
 	}
 	void printOn(ostream &out) {
-		out << string(data, len);
+		out << data;
 	}
 	operator int() const {
-		return (int)data[0];
+		return data;
 	}
 
 };
 
 
-template<size_t len>
-ostream& operator<<(ostream &out, DumbString<len> &ds) {
+template<size_t del>
+ostream& operator<<(ostream &out, Integer<del> &ds) {
 	ds.printOn(out);
 	return out;
 }
 
-template<size_t len>
-DumbString<len> gen_dumbstring() {
-	return DumbString<len>();
+template<size_t del>
+Integer<del> generate_random() {
+	return Integer<del>(rand());
+}
+
+static int g_start = 0;
+template<size_t del>
+Integer<del> generate_sequential() {
+	return Integer<del>(g_start++);
 }
 
 // Compare the results of performing the same operations on two dictionaries
@@ -80,6 +103,8 @@ void test_dicts(Dict1 &d1, Dict2 &d2, int n) {
 
 template<class T, class Dict, T (*gen)()>
 void build_and_search(Dict &d, const char *name, int n) {
+	global_comparisons = 0;
+
 	srand(1);
 	clock_t start = clock();
 	for (int i = 0; i < n; i++)
@@ -88,6 +113,9 @@ void build_and_search(Dict &d, const char *name, int n) {
 	double elapsed = ((double)(stop-start))/CLOCKS_PER_SEC;
 	cout << name << " RANDOM ADD " << n << " " << elapsed << endl;
 
+	cout << "comparisons = " << global_comparisons << endl;
+	global_comparisons = 0;
+
 	long sum = 0;
 	start = clock();
 	for (int i = 0; i < 5*n; i++)
@@ -95,7 +123,9 @@ void build_and_search(Dict &d, const char *name, int n) {
 	stop = clock();
 	elapsed = ((double)(stop-start))/CLOCKS_PER_SEC;
 	cout << name << " RANDOM FIND " << n << " " << elapsed << endl;
+
 	cout << "sum = " << sum << endl;
+	cout << "comparisons = " << global_comparisons << endl;
 }
 
 template <class Dict>
@@ -120,7 +150,7 @@ void experiments(Dict &d, int n) {
 
 int main(int argc, char **argv) {
 
-	DumbString<10> ds;
+	Integer<10> ds;
 	cout << ds << endl;
 
 	// Do some run-off comparisons just to make sure everything works
@@ -152,20 +182,37 @@ int main(int argc, char **argv) {
 	}
 
 	cout << "DumbStrings" << endl;
-	int n = 500000;
+	int n = 100000;
 	{
-		ods::RedBlackTree1<DumbString<10> > sl;
-		build_and_search<DumbString<10>,ods::RedBlackTree1<DumbString<10> >,gen_dumbstring<10> >(sl, "RedBlackTree", n);
+		ods::RedBlackTree1<Integer<10> > sl;
+		build_and_search<Integer<10>,ods::RedBlackTree1<Integer<10> >,generate_random<10> >(sl, "RedBlackTree", n);
 	}
 	{
-		fastws::TodoList<DumbString<10> > tdl(NULL, 0, .2);
-		build_and_search<DumbString<10>,fastws::TodoList<DumbString<10> >,gen_dumbstring<10> >(tdl, "TodoList", n);
+		fastws::TodoList<Integer<10> > tdl(NULL, 0, .1);
+		build_and_search<Integer<10>,fastws::TodoList<Integer<10> >,generate_random<10> >(tdl, "TodoList", n);
 	}
 	{
-		ods::SkiplistSSet<DumbString<10> > tdl;
-		build_and_search<DumbString<10>,ods::SkiplistSSet<DumbString<10> >,gen_dumbstring<10> >(tdl, "Skiplist", n);
+		ods::SkiplistSSet<Integer<10> > sl;
+		build_and_search<Integer<10>,ods::SkiplistSSet<Integer<10> >,generate_random<10> >(sl, "Skiplist", n);
+	}
+	{
+		ods::Treap1<Integer<10> > t;
+		build_and_search<Integer<10>,ods::Treap1<Integer<10> >,generate_random<10> >(t, "Treap", n);
 	}
 	cout << "Done DumbStrings" << endl;
+	cout << generate_sequential<10>() << endl;
+	cout << generate_sequential<10>() << endl;
+	cout << generate_sequential<10>() << endl;
+	{
+		ods::RedBlackTree1<Integer<10> > sl;
+		build_and_search<Integer<10>,ods::RedBlackTree1<Integer<10> >,generate_sequential<10> >(sl, "RedBlackTree", n);
+	}
+	{
+		fastws::TodoList<Integer<10> > tdl(NULL, 0, .1);
+		build_and_search<Integer<10>,fastws::TodoList<Integer<10> >,generate_sequential<10> >(tdl, "TodoList", n);
+	}
+
+	return 0;
 	for (int n = 1000000; n <= 10000000; n += 1000000) {
 		{
 			fastws::TodoList<int> tsl(NULL, 0, .41);
