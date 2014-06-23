@@ -89,7 +89,13 @@ SkiplistSSet<T>::~SkiplistSSet() {
 
 template<class T>
 T SkiplistSSet<T>::find(T x) {
-	Node *u = findPredNode(x);
+	Node *u = sentinel;
+	int r = h;
+	while (r >= 0) {
+		while (u->next[r] != NULL && u->next[r]->x < x)
+			u = u->next[r]; // go right in list r
+		r--; // go down into list r-1
+	}
 	return u->next[0] == NULL ? null : u->next[0]->x;
 }
 
