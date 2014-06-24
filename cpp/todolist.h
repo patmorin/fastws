@@ -100,7 +100,7 @@ void TodoList<T>::init(T *data, int n0) {
 	n0max = ceil(2. / eps);
 	n0max = 1;
 	// cout << "n0max = " << n0max << endl;
-	k = 1 + max(0.0, ceil(log(n0) / log(2-eps)));
+	k = max(0.0, ceil(log(n0) / log(2-eps)));
 
 	n = new int[k + 1]();
 	// cout << "k = " << k << endl;
@@ -182,6 +182,7 @@ T TodoList<T>::find(T x) {
 	for (int i = 0; i <= k; i++) {
 		if (u->next[i] != NULL && u->next[i]->x < x)
 			u = u->next[i];
+		//if (u->next[i] != NULL && u->next[i]->x == x) return u->next[i]->x;
 	}
 	Node *w = u->next[k];
 	return (w == NULL) ? (T)NULL : w->x;
@@ -192,11 +193,8 @@ bool TodoList<T>::add(T x) {
 	// do a search for x and keep track of the search path
 	Node *path[50]; // FIXME: hard upper-bound
 	Node *u = sentinel;
-	int i = 0;
-	while (u->next[i] != NULL && u->next[i]->x < x)
-		u = u->next[i];
-	path[i] = u;
-	for (i = 1; i <= k; i++) {
+	int i;
+	for (i = 0; i <= k; i++) {
 		if (u->next[i] != NULL && u->next[i]->x < x)
 			u = u->next[i];
 		path[i] = u;

@@ -116,6 +116,7 @@ T BinarySearchTree<Node,T>::findEQ(T x) {
 template<class Node, class T>
 T BinarySearchTree<Node,T>::find(T x) {
 	Node *w = r, *z = nil;
+	if ((int)x == 0) std::cout << "Finding 0" << std::endl;
 	while (w != nil) {
 		if (x < w->x) {
 			z = w;

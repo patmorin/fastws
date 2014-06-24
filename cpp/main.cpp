@@ -18,25 +18,36 @@ using namespace std;
 #include "todolist2.h"
 
 
-static long global_sum = 0;
-static long global_comparisons = 0;
-
-// A silly class to use for testing more expensive comparisons
-template<size_t del>
+// A silly class to use for simulating classes that have more expensive
+// comparisons
 class Integer {
 protected:
+	// used for statistics gathering
+	static unsigned long dummy;
+	static size_t comparisons;
+	static size_t del;
 
+	// the actual integer
 	int data;
 
 	void delay() {
-		int tmp = 0;
-		for (int i = 0; i < del; i++) {
+		unsigned int tmp = 0;
+		for (size_t i = 0; i < del; i++) {
 			tmp = (tmp + data) % 733721;
-			global_sum += tmp;
+			dummy += tmp;  // just to ensure this doesn't get optimized away
 		}
-		global_comparisons++;
+		comparisons++;
 	}
 public:
+	static void setDelay(size_t delay) {
+		del = delay;
+	}
+	static size_t getComparisons() {
+		return comparisons;
+	}
+	static void resetComparisons() {
+		comparisons = 0;
+	}
 	Integer() {
 		data = 0;
 	}
@@ -64,19 +75,127 @@ public:
 	operator int() const {
 		return data;
 	}
-
 };
 
+size_t Integer::dummy, Integer::comparisons, Integer::del;
 
-template<size_t del>
-ostream& operator<<(ostream &out, Integer<del> &ds) {
+
+ostream& operator<<(ostream &out, Integer &ds) {
 	ds.printOn(out);
 	return out;
 }
 
-template<size_t del>
-Integer<del> generate_random() {
-	return Integer<del>(rand());
+static long summer;
+
+int rand_data(size_t i, size_t n) {
+	return (rand() % (n*5));
+}
+
+int rand_search(size_t i, size_t n) {
+	return rand() % (n*5) - 2;
+}
+
+int sequential_data(size_t i, size_t n) {
+	return 5*i;
+}
+
+int requential_data(size_t i, size_t n) {
+	return 5*(n-i-1);
+}
+
+template<class Dict>
+void build_and_search(Dict &d, const char *name, size_t n,
+		int (*gen_add)(size_t, size_t), int (*gen_search)(size_t, size_t)) {
+	srand(1);
+	Integer::resetComparisons();
+
+	clock_t start = clock();
+	for (size_t i = 0; i < n; i++)
+		d.add(gen_add(i, n));
+	clock_t stop = clock();
+
+	double elapsed = ((double)(stop-start))/CLOCKS_PER_SEC;
+	double avg = ((double)Integer::getComparisons()) / n;
+	double c = avg * log(2) / log(d.size());
+	cout << name << " ADD " << n << " " << elapsed
+			<< " " << Integer::getComparisons()
+			<< " " << c << endl;
+
+	Integer::resetComparisons();
+	long sum = 0;
+	start = clock();
+	for (size_t i = 0; i < 5*n; i++)
+		sum += (int)d.find(gen_search(i, n));
+	stop = clock();
+
+	elapsed = ((double)(stop-start))/CLOCKS_PER_SEC;
+	avg = ((double)Integer::getComparisons()) / (5*n);
+	c = avg * log(2) / log(d.size());
+
+	cout << name << " FIND " << d.size() << " " << elapsed
+			<< " " <<  Integer::getComparisons()
+			<< " " << c << endl;
+
+	summer += sum; // to make sure this isn't optimized away
+}
+
+
+void test_suite(size_t n, int (*gen_data)(size_t, size_t),
+		int (*gen_search)(size_t, size_t)) {
+	{
+		fastws::TodoList<Integer> tdl(NULL, 0, .1);
+		build_and_search(tdl, "TodoList", n, gen_data, gen_search);
+		// cout << tdl;
+	}
+	{
+		ods::RedBlackTree1<Integer> rbt;
+		build_and_search(rbt, "RedBlackTree", n, gen_data, gen_search);
+	}
+	{
+		ods::Treap1<Integer> t;
+		build_and_search(t, "Treap", n,	gen_data, gen_search);
+	}
+	{
+		ods::SkiplistSSet<Integer> sl;
+		build_and_search(sl, "Skiplist", n, gen_data, gen_search);
+	}
+
+}
+
+int main(int argc, char **argv) {
+	Integer x(42);
+	Integer y = 39;
+	Integer z;
+	cout << "x = " << x << ", y = " << y << ", z = " << z << endl;
+
+	for (size_t delay = 0; delay <= 100; delay += 10) {
+		Integer::setDelay(delay);
+		cout << "DELAY " << delay << endl;
+		size_t n = 100000;
+		cout << endl << "Random additions" << endl;
+		test_suite(n, rand_data, rand_search);
+		cout << endl << "Sequential additions" << endl;
+		test_suite(n, sequential_data, rand_search);
+		cout << endl << "Requential additions" << endl;
+		test_suite(n, requential_data, rand_search);
+		cout << endl;
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+Integer generate_random() {
+	return Integer(rand());
 }
 
 static int g_start = 0;
@@ -100,15 +219,15 @@ void test_dicts(Dict1 &d1, Dict2 &d2, int n) {
 	}
 }
 
-
-template<class T, class Dict, T (*gen)()>
-void build_and_search(Dict &d, const char *name, int n) {
+template<class T, class Dict>
+void build_and_search(Dict &d, const char *name, int n,
+		T (*gen_add)(), T(*gen_search)()) {
 	global_comparisons = 0;
 
 	srand(1);
 	clock_t start = clock();
 	for (int i = 0; i < n; i++)
-		d.add(gen());
+		d.add(gen_add());
 	clock_t stop = clock();
 	double elapsed = ((double)(stop-start))/CLOCKS_PER_SEC;
 	cout << name << " RANDOM ADD " << n << " " << elapsed << endl;
@@ -119,7 +238,7 @@ void build_and_search(Dict &d, const char *name, int n) {
 	long sum = 0;
 	start = clock();
 	for (int i = 0; i < 5*n; i++)
-		sum += (int)d.find(gen());
+		sum += (int)d.find(gen_search());
 	stop = clock();
 	elapsed = ((double)(stop-start))/CLOCKS_PER_SEC;
 	cout << name << " RANDOM FIND " << n << " " << elapsed << endl;
@@ -185,7 +304,8 @@ int main(int argc, char **argv) {
 	int n = 100000;
 	{
 		ods::RedBlackTree1<Integer<10> > sl;
-		build_and_search<Integer<10>,ods::RedBlackTree1<Integer<10> >,generate_random<10> >(sl, "RedBlackTree", n);
+		build_and_search(sl, "RedBlackTree", n, generate_random<Integer<10>,
+				generate_random<Integer<10>);
 	}
 	{
 		fastws::TodoList<Integer<10> > tdl(NULL, 0, .1);
@@ -238,3 +358,4 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
+*/

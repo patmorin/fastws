@@ -33,7 +33,6 @@ protected:
 	using BinarySearchTree<Node,T>::rotateLeft;
 	using BinarySearchTree<Node,T>::rotateRight;
 	using BinarySearchTree<Node,T>::splice;
-	using BinaryTree<Node>::size;
 
 	static const int red = 0;
 	static const int black = 1;
@@ -54,6 +53,15 @@ public:
 	virtual ~RedBlackTree();
 	virtual bool add(T x);
 	virtual bool remove(T x);
+
+	void stats() {
+		size_t reds = 0;
+		Node *u = firstNode();
+		while (u != nil) {
+			if (u.color == red) reds++;
+			u = nextNode(u);
+		}
+	}
 };
 
 template<class T>
@@ -209,7 +217,7 @@ Node* RedBlackTree<Node,T>::removeFixupCase3(Node *u) {
 
 template<class Node, class T>
 void RedBlackTree<Node,T>::verify() {
-	assert (size(r) == n);
+	assert (BinaryTree<Node>::size(r) == n);
 	verify(r);
 }
 
@@ -255,8 +263,6 @@ bool RedBlackTree<Node,T>::add(T x) {
 	bool added = BinarySearchTree<Node,T>::add(u);
 	if (added)
 		addFixup(u);
-	if (n % 10000 == 0)
-		verify();
 	return added;
 }
 
