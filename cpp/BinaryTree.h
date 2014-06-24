@@ -61,6 +61,7 @@ BinaryTree<Node>::~BinaryTree() {
 template<class Node>
 void BinaryTree<Node>::clear() {
 	Node *u = r, *prev = nil, *next;
+	size_t count = 0;
 	while (u != nil) {
 		if (prev == u->parent) {
 			if (u->left != nil) next = u->left;
@@ -73,11 +74,15 @@ void BinaryTree<Node>::clear() {
 			next = u->parent;
 		}
 		prev = u;
-		if (next == u->parent)
+		if (next == u->parent) {
+			count++;
 			delete u;
+		}
 		u = next;
 	}
 	r = nil;
+	std::cout << std::endl << "BinaryTree clear deleted " << count
+			<< " nodes" << std::endl;
 }
 
 template<class Node>

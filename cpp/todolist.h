@@ -66,7 +66,7 @@ protected:
 	void deleteNode(Node *u);
 
 public:
-	TodoList(T *data, int n0, double eps0);
+	TodoList(T *data = NULL, int n0 = 0, double eps0 = .4);
 	virtual ~TodoList();
 	T find(T x);
 	bool add(T x);

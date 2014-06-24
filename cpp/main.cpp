@@ -103,6 +103,11 @@ int requential_data(size_t i, size_t n) {
 	return 5*(n-i-1);
 }
 
+int shuffle_data(size_t i, size_t n) {
+	int sn = ceil(sqrt(n));
+	return (i*sn + i/sn) % n;
+}
+
 template<class Dict>
 void build_and_search(Dict &d, const char *name, size_t n,
 		int (*gen_add)(size_t, size_t), int (*gen_search)(size_t, size_t)) {
@@ -142,18 +147,35 @@ void build_and_search(Dict &d, const char *name, size_t n,
 
 void test_suite(size_t n, int (*gen_data)(size_t, size_t),
 		int (*gen_search)(size_t, size_t)) {
+	cout << "Structure Operation n time #comparisons c" << endl;
 	{
-		fastws::TodoList<Integer> tdl(NULL, 0, .1);
+		fastws::TodoList<Integer> tdl(NULL, 0, .2);
 		build_and_search(tdl, "TodoList", n, gen_data, gen_search);
-		// cout << tdl;
 	}
 	{
 		ods::RedBlackTree1<Integer> rbt;
 		build_and_search(rbt, "RedBlackTree", n, gen_data, gen_search);
+		int tpl = rbt.tpl();
+		cout << "I: total path length = " << tpl << endl;
+		double apl = ((double)tpl) / rbt.size();
+		cout << "I: average path length = " << apl << endl;
+		cout << "I: c_average = " << apl * log(2) / log(n) << endl;
+		cout << "#red nodes = " << rbt.reds() << endl;
+		int mpl = rbt.mpl();
+		cout << "I: maximum path length = " << mpl << endl;
+		cout << "I: c_max = " << log(2) * mpl / log(n) << endl;
 	}
 	{
 		ods::Treap1<Integer> t;
 		build_and_search(t, "Treap", n,	gen_data, gen_search);
+		int tpl = t.tpl();
+		cout << "I: total path length = " << tpl << endl;
+		double apl = ((double)tpl) / t.size();
+		cout << "I: average path length = " << apl << endl;
+		cout << "I: c_average = " << apl * log(2) / log(n) << endl;
+		int mpl = t.mpl();
+		cout << "I: maximum path length = " << mpl << endl;
+		cout << "I: c_max = " << log(2) * mpl / log(n) << endl;
 	}
 	{
 		ods::SkiplistSSet<Integer> sl;
@@ -162,22 +184,66 @@ void test_suite(size_t n, int (*gen_data)(size_t, size_t),
 
 }
 
-int main(int argc, char **argv) {
-	Integer x(42);
-	Integer y = 39;
-	Integer z;
-	cout << "x = " << x << ", y = " << y << ", z = " << z << endl;
+// Compare the results of performing the same operations on two dictionaries
+template<class Dict1, class Dict2>
+void test_dicts(Dict1 &d1, Dict2 &d2, int n) {
+	srand(1);
+	for (int i = 0; i < n; i++) {
+		int x = rand() % (5*n);
+		assert(d1.add(x) == d2.add(x));
+	}
 
-	for (size_t delay = 0; delay <= 100; delay += 10) {
+	for (int i = 0; i < 5*n; i++) {
+		int x = rand() % (5*(n+1))-2;
+		assert(d1.find(x) == d2.find(x));
+	}
+}
+
+
+void sanity_tests(size_t n) {
+	{
+		ods::RedBlackTree1<int> rbt;
+		ods::Treap1<int> t;
+		test_dicts(rbt, t, n);
+	}
+	{
+		ods::Treap1<int> t;
+		ods::SkiplistSSet<int> sl;
+		test_dicts(t, sl, n);
+	}
+	{
+		ods::SkiplistSSet<int> sl;
+		fastws::TodoList<int> tdl;
+		test_dicts(sl, tdl, n);
+	}
+	{
+		fastws::TodoList<int> tdl;
+		ods::RedBlackTree1<int> rbt;
+		test_dicts(tdl, rbt, n);
+	}
+}
+
+int main(int argc, char **argv) {
+	// start with some sanity tests
+	cout << "I: Doing sanity tests...";
+	cout.flush();
+	sanity_tests(100000);
+	cout << "done" << endl;
+
+	// start with some bigger tests
+	for (size_t delay = 0; delay <= 0; delay += 10) {
 		Integer::setDelay(delay);
 		cout << "DELAY " << delay << endl;
-		size_t n = 100000;
+		size_t n = 500000;
 		cout << endl << "Random additions" << endl;
 		test_suite(n, rand_data, rand_search);
 		cout << endl << "Sequential additions" << endl;
 		test_suite(n, sequential_data, rand_search);
 		cout << endl << "Requential additions" << endl;
 		test_suite(n, requential_data, rand_search);
+		cout << endl;
+		cout << endl << "Shuffled additions" << endl;
+		test_suite(n, shuffle_data, rand_search);
 		cout << endl;
 	}
 }

@@ -38,6 +38,15 @@ protected:
 	virtual void rotateRight(Node *u);
 	virtual void rotateLeft(Node *u);
 	virtual bool add(Node *u);
+	// Compute the total path length of the subtree rooted at r
+	int tpl(Node *u, int d) {
+		if (u==nil) return d;
+		return tpl(u->left, d+1) + tpl(u->right, d+1);
+	}
+	int mpl(Node *u) {
+		if (u == nil) return 0;
+		return 1 + max(mpl(u->left), mpl(u->right));
+	}
 public:
 	BinarySearchTree();
 	BinarySearchTree(T null);
@@ -48,6 +57,15 @@ public:
 	virtual T findEQ(T x);
 	virtual int size();
 	virtual void clear();
+
+	// Compute the total path length of this tree
+	int tpl() {
+		return tpl(r, 0);
+	}
+	int mpl() {
+		return mpl(r);
+	}
+
 };
 
 template<class T>
@@ -116,7 +134,6 @@ T BinarySearchTree<Node,T>::findEQ(T x) {
 template<class Node, class T>
 T BinarySearchTree<Node,T>::find(T x) {
 	Node *w = r, *z = nil;
-	if ((int)x == 0) std::cout << "Finding 0" << std::endl;
 	while (w != nil) {
 		if (x < w->x) {
 			z = w;

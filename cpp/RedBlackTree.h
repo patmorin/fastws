@@ -54,14 +54,14 @@ public:
 	virtual bool add(T x);
 	virtual bool remove(T x);
 
-	void stats() {
-		size_t reds = 0;
-		Node *u = firstNode();
-		while (u != nil) {
-			if (u.color == red) reds++;
-			u = nextNode(u);
-		}
+	int reds(Node *u) {
+		if (u == nil) return 0;
+		return (1 - u->colour) + reds(u->left) + reds(u->right);
 	}
+	int reds() {
+		return reds(r);
+	}
+
 };
 
 template<class T>
@@ -249,6 +249,7 @@ RedBlackTree<Node,T>::RedBlackTree() {
 
 template<class Node, class T>
 RedBlackTree<Node,T>::~RedBlackTree() {
+	std::cout << "RedBlackTree destructor";
 	delete nil;
 }
 
@@ -263,6 +264,8 @@ bool RedBlackTree<Node,T>::add(T x) {
 	bool added = BinarySearchTree<Node,T>::add(u);
 	if (added)
 		addFixup(u);
+	else
+		delete u;
 	return added;
 }
 
